@@ -31,8 +31,9 @@ async function searchSelectionField(name, value) {
 }
 
 async function changeSimpleField(name, value) {
-  $(`[name=${name}]`).val(value);
-  $(`[name=${name}]`).trigger("change");
+  let selector = `[name=${name}]`;
+  $(selector).val(value);
+  $(selector).trigger("change");
 }
 
 async function deleteNegativeLines() {
@@ -70,11 +71,11 @@ async function openInvoiceFromSO() {
 }
 
 async function updateAmount(amount) {
-  taxCoefficient = [...document.querySelectorArray ('.o_badge_text')].reduce((sum, span) => {
+  let taxCoefficient = [...document.querySelectorArray('.o_badge_text')].reduce((sum, span) => {
     const num = parseFloat(span.textContent.replace(/[^\d.-]/g, ''));
     return isNaN(num) ? sum : sum + num;
   }, 0) / 100 + 1;
-  untaxed = amount / taxCoefficient;
+  let untaxed = amount / taxCoefficient;
   untaxed = Number(untaxed.toFixed(2));
   await changeSimpleField('price_unit', untaxed);
 }
@@ -125,16 +126,22 @@ async function newCreditNoteFromInvoice(amount) {
   await editCreditNote(amount);
 }
 
+async function newCreditNoteFromInvoice2(amount) {
+  await newInvoice(amount);
+  await changeSimpleField('type','"out_refund"');
+  await changeSimpleField('reason_code', '"Customer - Order Mistake"');
+}
+
 async function newCreditNoteFromSO(amount) {
   await openInvoiceFromSO();
   await sleep(1000);
-  await newCreditNoteFromInvoice(amount);
+  await newCreditNoteFromInvoice2(amount);
 }
 ncs = newCreditNoteFromSO
 
 async function newCreditNoteCSRM(amount) {
   await openInvoiceFromCSRM();
   await sleep(1000);
-  await newCreditNoteFromInvoice(amount);
+  await newCreditNoteFromInvoice2(amount);
 }
-nic = newCreditNoteCSRM
+ncc = newCreditNoteCSRM
