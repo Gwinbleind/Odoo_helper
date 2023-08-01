@@ -52,23 +52,6 @@ async function awaitClickByName(names, delay = 1, order = 0, N = 20, step = 500)
 	}
 }
 
-function documentQuerySelectorArray(queries) {
-	// DEPRECATED
-	// Look for specific DOM Elements by matching queries
-	// If parameter is an Array, search for first matched query in DOM
-	// If parameter is a String, similar to standart function
-
-	let ind = -1;
-	if (Array.isArray(queries)) {
-		if (queries.some((query,index) => {
-			ind = index;
-			return document.querySelectorAll(query).length > 0;
-		})) return document.querySelectorAll(queries[ind]);
-	} else if (typeof queries == 'string') {
-		return document.querySelectorAll(queries);
-	} else return document.querySelectorAll('_');
-}
-
 Node.prototype.querySelectorArray = function(queries) {
 	// Look for specific DOM Elements by matching queries
 	// If parameter is an Array, search for first matched query in DOM
@@ -112,15 +95,6 @@ async function awaitClickByQuery(query, delay = 1, order = 0, N = 20, step = 500
   console.log(query);
   await sleep(delay);
   await waitForQuery(query, N, step).then(res => count = res);
-  // Old code
-  /* while ((
-    (typeof document.querySelectorArray(query)[0] == 'undefined')
-    || (typeof document.querySelectorArray(query)[0] == 'null')
-    || document.querySelectorArray(query)[0].classList.contains('o_invisible_modifier'))
-  ) && (count < N)) {
-    await sleep(step);
-    count++;
-  } */
 
   if (count >= N) console.log('over ' + count)
   else {
@@ -158,19 +132,17 @@ async function sta() {
 	// open for edit the invoice/credit note/payment
 	// Imitate clicks: Edit -> Cancel -> To draft
 
-	awaitClickByQuery('.o_form_button_edit');
-	// document.getElementsByClassName('o_form_button_edit')[0].click();
-	awaitClickByName(['action_invoice_cancel','cancel'], 100);
-	awaitClickByName(['action_invoice_draft','action_draft'], 100);
+	await awaitClickByQuery('.o_form_button_edit');
+	await awaitClickByName(['action_invoice_cancel','cancel'], 100);
+	await awaitClickByName(['action_invoice_draft','action_draft'], 100);
 }
 
 async function fin() {
 	// close and save after edit the invoice/credit note/payment
 	// Imitate the clicks: Save -> Confirm
 
-	awaitClickByName('o_form_button_save');
-	// document.getElementsByClassName('o_form_button_save')[0].click();
-	awaitClickByName(['action_invoice_open','post'], 1500);
+	await awaitClickByQuery('.o_form_button_save');
+	await awaitClickByName(['action_invoice_open','post'], 1500);
 }
 
 async function reo() {
@@ -178,21 +150,9 @@ async function reo() {
 	// don't change the data, only recalculate all automatic fields
 	// Imitate the clicks: Cancel -> To draft -> Confirm
 
-	// awaitClickByName('o_form_button_edit');
-	awaitClickByName(['action_invoice_cancel','cancel'], 100);
-	awaitClickByName(['action_invoice_draft','action_draft'], 1500);
-
-	// awaitClickByName('o_form_button_save');
-	awaitClickByName(['action_invoice_open','post'], 1500);
+	// await awaitClickByQuery('.o_form_button_edit');await
+	await awaitClickByName(['action_invoice_cancel','cancel'], 100);
+	await awaitClickByName(['action_invoice_draft','action_draft'], 1500);
+	// await awaitClickByQuery('.o_form_button_save');
+	await awaitClickByName(['action_invoice_open','post'], 1500);
 }
-
-// async function test() {
-//   let inv;
-//   await awaitClickByName('sale_id');
-//   await waitForName('action_view_invoice',500, 60, 500).then(() => {
-//     inv = +document.getElementByNamesArray('invoice_count')[0]
-//       .querySelectorArray('.o_stat_value')[0].textContent;
-//   })
-//   await awaitClickByName('action_view_invoice',200, 0, 30, 1000);
-//   if (inv > 1) await choosePositiveInvoice();
-// }
