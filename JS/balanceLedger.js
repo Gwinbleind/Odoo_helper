@@ -24,24 +24,22 @@ async function changeFormField(name, value) {
   document.getElementByNamesArray(name)[0].dispatchEvent(new KeyboardEvent('keydown', {'key':'a'}));
 }
 
-async function searchSelectionField(name, value) {
-  document.querySelectorArray(`tr.o_selected_row>td>div[name="${name}"]>div>input`)[0].value = value;
-  document.querySelectorArray(`tr.o_selected_row>td>div[name="${name}"]>div>input`)[0].dispatchEvent(new KeyboardEvent('keydown', {'key':'a'}));
-  awaitClickByQuery('ul.ui-autocomplete.ui-front.ui-menu>li.o_m2o_dropdown_option', 1000);
-}
-
 async function changeSimpleField(name, value) {
   let selector = `[name=${name}]`;
   $(selector).val(value);
   $(selector).trigger("change");
 }
 
+function findColumnIndexByName(name) {
+  return [...document.querySelectorArray('th')].findIndex(row => row.textContent === name);
+}
+
 async function deleteNegativeLines() {
   await awaitClickByQuery('th', 100, 12, 50);
   await sleep(500);
-  let subtotal = [...document.querySelectorArray('th')].findIndex(row => row.textContent === 'Subtotal');
-  let product = [...document.querySelectorArray('th')].findIndex(row => row.textContent === 'Product');
-  console.log(subtotal, product);
+  let subtotal = findColumnIndexByName('Subtotal');
+  let product = findColumnIndexByName('Product');
+  // console.log(subtotal, product);
   for (let row of document.querySelectorArray('table.o_section_and_note_list_view tbody tr.o_data_row')) {
     console.log(parseFloat(row.querySelectorAll('td')[subtotal].textContent.replace(/[^\d.-]/g, '')));
     if (parseFloat(row.querySelectorAll('td')[subtotal].textContent.replace(/[^\d.-]/g, '')) <= 0
@@ -126,22 +124,43 @@ async function newCreditNoteFromInvoice(amount) {
   await editCreditNote(amount);
 }
 
-async function newCreditNoteFromInvoice2(amount) {
+async function newCreditNote(amount) {
   await newInvoice(amount);
-  await changeSimpleField('type','"out_refund"');
-  await changeSimpleField('reason_code', '"Customer - Order Mistake"');
+  await sleep(1000);
+  await InvoiceToCreditNote();
 }
 
 async function newCreditNoteFromSO(amount) {
   await openInvoiceFromSO();
   await sleep(1000);
-  await newCreditNoteFromInvoice2(amount);
+  await newCreditNote(amount);
 }
 ncs = newCreditNoteFromSO
 
-async function newCreditNoteCSRM(amount) {
+async function newCreditNoteFromCSRM(amount) {
   await openInvoiceFromCSRM();
   await sleep(1000);
-  await newCreditNoteFromInvoice2(amount);
+  await newCreditNote(amount);
 }
-ncc = newCreditNoteCSRM
+ncc = newCreditNoteFromCSRM
+
+async function creditNoteToInvoice() {
+  await changeSimpleField('type','"out_invoice"');
+}
+ctoi = creditNoteToInvoice
+
+async function InvoiceToCreditNote() {
+  await changeSimpleField('type','"out_refund"');
+  await changeSimpleField('reason_code', '"Customer - Order Mistake"');
+}
+itoc = InvoiceToCreditNote
+
+async function copyActiveLine(amount) {
+  // Create an additional line if can't fix the discrepancy for couple pennies
+  console.log('not finished')
+}
+
+async function getActiveLineValueByColumnName(name) {
+  let index = await findColumnIndexByName(name);
+  return document.querySelectorArray(`tr.o_selected_row>td`)[index].querySelectorArray('div>div>input')[0].value.replace(/\[.*?\] /, '');
+}
