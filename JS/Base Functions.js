@@ -66,14 +66,14 @@ Node.prototype.querySelectorArray = function(queries) {
   } else return query('_');
 };
 
-async function waitForQuery(query, N = 20, step = 500) {
+async function waitForQuery(query, N = 20, step = 500, root = document) {
   // wait when app load the new screen or change the target state to active
 
   let i = 0;
   while (
-    (typeof document.querySelectorArray(query)[0] == 'undefined')
-    || (document.querySelectorArray(query)[0] == null)
-    || document.querySelectorArray(query)[0].classList.contains('o_invisible_modifier')
+    (typeof root.querySelectorArray(query)[0] == 'undefined')
+    || (root.querySelectorArray(query)[0] == null)
+    || root.querySelectorArray(query)[0].classList.contains('o_invisible_modifier')
   ) {
     if(i > N) return i;
       console.log(i);
@@ -83,7 +83,7 @@ async function waitForQuery(query, N = 20, step = 500) {
   return i;
 }
 
-async function awaitClickByQuery(query, delay = 1, order = 0, N = 20, step = 500) {
+async function awaitClickByQuery(query, delay = 1, order = 0, N = 20, step = 500, root = document) {
   // async func that wait for availability to click the button
   // defined by query string
   // or array of queries
@@ -94,13 +94,13 @@ async function awaitClickByQuery(query, delay = 1, order = 0, N = 20, step = 500
   let count;
   console.log(query);
   await sleep(delay);
-  await waitForQuery(query, N, step).then(res => count = res);
+  await waitForQuery(query, N, step, root).then(res => count = res);
 
   if (count >= N) console.log('over ' + count)
   else {
     if (typeof order == "string")
       if (order == "last")
-        order = document.querySelectorArray(query).length - 1;
+        order = root.querySelectorArray(query).length - 1;
     	else
         throw new Error('unrecognized order string')
     else if (
@@ -111,21 +111,42 @@ async function awaitClickByQuery(query, delay = 1, order = 0, N = 20, step = 500
     ) {}
     else
       throw new Error('wrong order number')
-    document.querySelectorArray(query)[order].click();
+    root.querySelectorArray(query)[order].click();
     console.log('after ' + count)
   }
 }
 
+async function changeFieldByName(name, value, root = document) {
+  root.getElementByNamesArray(name)[0].value = value;
+}
+
+async function changeFieldDirect(element, value) {
+  element.value = value;
+}
+
+async function triggerFieldUpdate(name, root = document) {
+  root.getElementByNamesArray(name)[0].dispatchEvent(new KeyboardEvent('keydown', {'key': 'a'}));
+}
+
+async function triggerDirectUpdate(element) {
+  element.dispatchEvent(new KeyboardEvent('keydown', {'key':'a'}));
+}
+
+async function changeFormField(name, value, root = document) {
+  await changeFieldByName(name, value, root);
+  await triggerFieldUpdate(name, root);
+}
+
 // ---------------------------------------
 
-function tya() {
-	// Two Years Ago function
-	// change start date of partner ledger view to Jan 1 2020
+async function tya() {
+	// change start date of partner ledger view to Jan 1 2019
 
-	awaitClickByName('fa fa-calendar');
-	awaitClickByName('dropdown-item js_foldable_trigger o_closed_menu');
-	document.getElementsByName('date_from')[0].value = "01/01/2020";
-	awaitClickByName('btn btn-primary js_account_report_date_filter');
+	await awaitClickByName('fa fa-calendar');
+	await awaitClickByName('dropdown-item js_foldable_trigger o_closed_menu');
+  await changeFieldByName('date_from', "01/01/2019");
+	// document.getElementsByName('date_from')[0].value = "01/01/2019";
+	await awaitClickByName('btn btn-primary js_account_report_date_filter');
 }
 
 async function sta() {
@@ -155,4 +176,12 @@ async function reo() {
 	await awaitClickByName(['action_invoice_draft','action_draft'], 1500);
 	// await awaitClickByQuery('.o_form_button_save');
 	await awaitClickByName(['action_invoice_open','post'], 1500);
+}
+
+async function rec() {
+  // retrigger tax calculation by open, change lines and close
+  await sta();
+  await awaitClickByQuery('.o_field_x2many_list_row_add a');
+  await awaitClickByQuery('.active [name="delete"]',500,'last');
+  await fin();
 }

@@ -13,21 +13,34 @@ async function duplicateRecord() {
   await awaitClickByQuery('.o_dropdown_menu.show > a',300,1);
 }
 
-async function changeSelectionField(name, value) {
-  document.querySelectorArray(`tr.o_selected_row>td>div[name="${name}"]>div>input`)[0].value = value;
-  document.querySelectorArray(`tr.o_selected_row>td>div[name="${name}"]>div>input`)[0].dispatchEvent(new KeyboardEvent('keydown', {'key':'a'}));
-  await awaitClickByQuery('ul.ui-autocomplete.ui-front.ui-menu>li', 1000);
+async function readSelectionField(name, initial = 'tr.o_selected_row>td>') {
+  const els = document.querySelectorArray(`${initial}div[name="${name}"] div>span`);
+  return Array.from(els, el => el.title);
 }
 
-async function changeFormField(name, value) {
-  document.getElementByNamesArray(name)[0].value = value;
-  document.getElementByNamesArray(name)[0].dispatchEvent(new KeyboardEvent('keydown', {'key':'a'}));
+async function changeSelectionField(name, value, initial = 'tr.o_selected_row>td>', delay = 100) {
+  // initial default to work with child list view tables, empty - for simple fields
+  let element = document.querySelectorArray(`${initial}div[name="${name}"] div>input`)[0];
+  // document.querySelectorArray(`tr.o_selected_row>td>div[name="invoice_line_tax_ids"] div>input`)[0];
+  await changeFieldDirect(element, value);
+  await triggerDirectUpdate(element);
+  // await sleep(delay);
+  // element.value = value;
+  // element.dispatchEvent(new KeyboardEvent('keydown', {'key':'a'}));
+  await awaitClickByQuery('ul.ui-autocomplete.ui-front.ui-menu[style*="display: block"]>li', 1000);
+}
+
+async function readSimpleField(name) {
+  let selector = `[name=${name}]`;
+  return $(selector).val();
 }
 
 async function changeSimpleField(name, value) {
   let selector = `[name=${name}]`;
+  let old = $(selector).val();
   $(selector).val(value);
   $(selector).trigger("change");
+  return old;
 }
 
 function findColumnIndexByName(name) {
@@ -156,11 +169,69 @@ async function InvoiceToCreditNote() {
 itoc = InvoiceToCreditNote
 
 async function copyActiveLine(amount) {
-  // Create an additional line if can't fix the discrepancy for couple pennies
+  // Create an additional line if you can't fix the discrepancy for couple pennies
   console.log('not finished')
 }
 
 async function getActiveLineValueByColumnName(name) {
   let index = await findColumnIndexByName(name);
   return document.querySelectorArray(`tr.o_selected_row>td`)[index].querySelectorArray('div>div>input')[0].value.replace(/\[.*?\] /, '');
+}
+
+async function test(name) {
+  for (let tax of taxNames) {
+    await sleep(500);
+    await changeSelectionField('invoice_line_tax_ids',tax)
+  }
+  // await changeSelectionField('account_id', '99913', '');
+  // let field = document.querySelectorArray(`[name="${name}"] div input`)[0];
+  // field.value = '99913';
+  // field.dispatchEvent(new KeyboardEvent('keydown', {'key': 'a'}));
+}
+
+async function test2() {
+  const productID = findColumnIndexByName('Product');
+  const discountID = findColumnIndexByName('Discount ($)');
+  // const taxesID = findColumnIndexByName('Taxes')
+  for (let row of document.querySelectorArray('table.o_section_and_note_list_view tbody tr.o_data_row')) {
+    let disc = parseFloat(row.querySelectorArray('td')[discountID].textContent.replace(/[^\d.-]/g, ''));
+    console.log(disc);
+    if (disc > 0
+      && !row.querySelectorArray('td')[productID].textContent.includes('Delivery_007')) {
+      await sleep(100);
+      console.log('pause1');
+      await awaitClickByQuery('td',1000,0,20,50,row);
+      await sleep(100);
+      console.log('pause2');
+      await changeSimpleField('discount_flat', 0);
+      await sleep(100);
+      // console.log('pause3');
+      let qty = await readSimpleField('quantity');
+      await sleep(100);
+      // console.log('pause4');
+      let taxNames = await readSelectionField('invoice_line_tax_ids');
+      // await sleep(1000);
+      // console.log('pause6');
+      // TODO Create new line with discount
+      await awaitClickByQuery('.o_field_x2many_list_row_add a');
+      await sleep(1000);
+      // console.log('pause7');
+      await changeSelectionField('product_id', 'Discounts - Sales');
+      await sleep(1000);
+      // console.log('pause8');
+      await changeSelectionField('account_id', '44001');
+      // await sleep(1000);
+      // console.log('pause9');
+      await changeSimpleField('quantity', qty);
+      // await sleep(1000);
+      // console.log('pause10');
+      await changeSimpleField('price_unit', -disc);
+      await sleep(300);
+      // console.log('pause11');
+      for (let tax of taxNames) {
+        await sleep(500);
+        await changeSelectionField('invoice_line_tax_ids',tax);
+      }
+    }
+  }
 }
